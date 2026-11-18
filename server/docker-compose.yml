@@ -1,0 +1,33 @@
+services:
+  mongo_db:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+  dealership-api:
+    build: ./database
+    restart: unless-stopped
+    environment:
+      MONGO_URL: mongodb://mongo_db:27017/dealershipsDB
+      PORT: "3030"
+    depends_on: [mongo_db]
+  sentiment:
+    build:
+      context: ./djangoapp/microservices
+    restart: unless-stopped
+    environment:
+      FLASK_APP: app.py
+      FLASK_RUN_HOST: 0.0.0.0
+      FLASK_RUN_PORT: 5050
+  web:
+    build: .
+    restart: unless-stopped
+    ports: ["8000:8000"]
+    environment:
+      backend_url: http://dealership-api:3030
+      sentiment_analyzer_url: http://sentiment:5050
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: change-me-before-deployment
+    depends_on: [dealership-api, sentiment]
+volumes:
+  mongo_data:

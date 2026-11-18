@@ -1,10 +1,9 @@
-FROM python:3.9.18-slim-bookworm
-
-
-WORKDIR /python-docker
-
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN ls
-CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
+RUN mkdir -p /root/nltk_data/sentiment && cp sentiment/vader_lexicon.zip /root/nltk_data/sentiment/vader_lexicon.zip
+ENV FLASK_APP=app.py FLASK_RUN_HOST=0.0.0.0 FLASK_RUN_PORT=5050
+EXPOSE 5050
+CMD ["flask", "run"]
