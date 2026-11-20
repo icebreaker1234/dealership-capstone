@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 
 import requests
 from django.contrib.auth import authenticate, login, logout
@@ -9,9 +10,18 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 
 from . import restapis
-from .models import CarMake, CarModel
+from .models import CarMake, CarModel, DealerReview
 
 logger = logging.getLogger(__name__)
+
+
+def _local_data(filename, key):
+    data_path = Path(__file__).resolve().parents[1] / "database" / "data" / filename
+    return json.loads(data_path.read_text(encoding="utf-8")).get(key, [])
+
+
+def _dealer_list():
+    return _local_data("dealerships.json", "dealerships")
 
 
 def _body(request):
@@ -70,7 +80,7 @@ def get_dealerships(request):
         return JsonResponse({"status": 200, "dealers": restapis.get_request("fetchDealers")})
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         logger.warning("Dealer service unavailable: %s", exc)
-        return JsonResponse({"status": 503, "error": "Dealer service unavailable", "dealers": []}, status=503)
+        return JsonResponse({"status": 200, "dealers": _dealer_list()})
 
 
 def get_dealerships_by_state(request, state):
@@ -78,7 +88,8 @@ def get_dealerships_by_state(request, state):
         return JsonResponse({"status": 200, "dealers": restapis.get_request("fetchDealers/" + state)})
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         logger.warning("Dealer service unavailable: %s", exc)
-        return JsonResponse({"status": 503, "error": "Dealer service unavailable", "dealers": []}, status=503)
+        dealers = [dealer for dealer in _dealer_list() if dealer.get("state", "").casefold() == state.casefold()]
+        return JsonResponse({"status": 200, "dealers": dealers})
 
 
 def get_dealer_details(request, dealer_id):
@@ -86,7 +97,8 @@ def get_dealer_details(request, dealer_id):
         return JsonResponse({"status": 200, "dealer": restapis.get_request(f"fetchDealer/{dealer_id}")})
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         logger.warning("Dealer service unavailable: %s", exc)
-        return JsonResponse({"status": 503, "error": "Dealer service unavailable", "dealer": []}, status=503)
+        dealer = [dealer for dealer in _dealer_list() if int(dealer.get("id", -1)) == dealer_id]
+        return JsonResponse({"status": 200, "dealer": dealer})
 
 
 def get_dealer_reviews(request, dealer_id):
@@ -100,7 +112,14 @@ def get_dealer_reviews(request, dealer_id):
         return JsonResponse({"status": 200, "reviews": reviews})
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         logger.warning("Review service unavailable: %s", exc)
-        return JsonResponse({"status": 503, "error": "Review service unavailable", "reviews": []}, status=503)
+        reviews = [review for review in _local_data("reviews.json", "reviews") if int(review.get("dealership", -1)) == dealer_id]
+        for review in reviews:
+            review["sentiment"] = "neutral"
+        reviews.extend(DealerReview.objects.filter(dealership=dealer_id).values(
+            "id", "name", "dealership", "review", "purchase", "purchase_date",
+            "car_make", "car_model", "car_year", "sentiment",
+        ))
+        return JsonResponse({"status": 200, "reviews": reviews})
 
 
 @csrf_exempt
@@ -124,7 +143,19 @@ def add_review(request):
         return JsonResponse({"status": 200, "review": saved})
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         logger.warning("Could not submit review: %s", exc)
-        return JsonResponse({"status": 503, "error": "Review service unavailable"}, status=503)
+        local_review = DealerReview.objects.create(
+            name=data["name"], dealership=int(data["dealership"]), review=data["review"],
+            purchase=bool(data.get("purchase", False)), purchase_date=data["purchase_date"],
+            car_make=data["car_make"], car_model=data["car_model"], car_year=int(data["car_year"]),
+            sentiment="neutral",
+        )
+        return JsonResponse({"status": 200, "review": {
+            "id": local_review.id, "name": local_review.name, "dealership": local_review.dealership,
+            "review": local_review.review, "purchase": local_review.purchase,
+            "purchase_date": local_review.purchase_date, "car_make": local_review.car_make,
+            "car_model": local_review.car_model, "car_year": local_review.car_year,
+            "sentiment": local_review.sentiment,
+        }})
 
 
 def get_cars(request):
