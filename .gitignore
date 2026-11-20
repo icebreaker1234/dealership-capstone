@@ -61,6 +61,18 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Local assessment response files and session cookies (keep out of GitHub)
+CI-CD.txt
+server/cookies.txt
+server/loginuser
+server/logoutuser
+server/getdealerreviews
+server/getalldealers
+server/getdealerbyid
+server/getdealersbyState
+server/getallcarmakes
+server/analyzereview
+
 # Flask stuff:
 instance/
 .webassets-cache

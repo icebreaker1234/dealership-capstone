@@ -1,7 +1,7 @@
-# Best Cars Dealership Review Portal
+# fullstack_developer_capstone
 
-**Repository:** `dealership-capstone`  
-**Project:** IBM Full Stack Cloud Developer Capstone — Best Cars dealership reviews
+**Repository:** `fullstack_developer_capstone`  
+**Project:** `fullstack_developer_capstone` — Best Cars Dealership Review Portal
 
 A full-stack dealership review portal built with Django, React, Node.js/Express, MongoDB, and a Flask sentiment analyzer. Visitors can browse dealerships and filter by state; registered users can sign in and post reviews. Django serves the web application and proxies dealer, review, and sentiment requests to the supporting services.
 

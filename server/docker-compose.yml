@@ -7,6 +7,7 @@ services:
   dealership-api:
     build: ./database
     restart: unless-stopped
+    ports: ["3030:3030"]
     environment:
       MONGO_URL: mongodb://mongo_db:27017/dealershipsDB
       PORT: "3030"
@@ -15,6 +16,7 @@ services:
     build:
       context: ./djangoapp/microservices
     restart: unless-stopped
+    ports: ["5050:5050"]
     environment:
       FLASK_APP: app.py
       FLASK_RUN_HOST: 0.0.0.0
